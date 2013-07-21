@@ -1,0 +1,6 @@
+Creates a barrier for mouse pointers. Pointers cannot pass this barrier
+at all.
+
+BUGS
+
+	Sometimes, pointers can "beam" through the barrier.
