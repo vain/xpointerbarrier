@@ -1,6 +1,47 @@
-Creates a barrier for mouse pointers. Pointers cannot pass this barrier
-at all.
+                            ===============
+                            xpointerbarrier
+                            ===============
 
-BUGS
 
-	Sometimes, pointers can "beam" through the barrier.
+This program creates four pointer barriers around each XRandR screen,
+thus effectively jailing your mouse pointer to one physical screen.
+
+Pointer barriers are mostly useful when there is more than one physical
+screen connected to your computer. Properly placed barriers can then
+make you feel like you're sitting in front of only one screen: When you
+throw your mouse in the upper right corner, it does not suddenly switch
+to another monitor.
+
+See also:
+
+http://who-t.blogspot.de/2012/12/whats-new-in-xi-23-pointer-barrier.html
+
+
+Installation
+------------
+
+The following C libraries are required:
+
+    - libx11
+    - libxfixes
+    - libxrandr
+
+The XFIXES extension must be available on your X server.
+
+xpointerbarrier expects to be run on a POSIX-ish operating system.
+
+To build the program and install it to /usr/local:
+
+    $ make
+    # make install
+
+
+Running
+-------
+
+Simply run the program in your ~/.xinitrc:
+
+    $ xpointerbarrier 47 7 7 27
+
+It's probably best to first configure your screens, then run the
+program.

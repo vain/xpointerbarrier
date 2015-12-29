@@ -1,0 +1,51 @@
+.TH xpointerbarrier 1 "2015-12-29" "xpointerbarrier" "User Commands"
+.\" --------------------------------------------------------------------
+.SH NAME
+xpointerbarrier \- Create pointer barriers around your working area
+.\" --------------------------------------------------------------------
+.SH SYNOPSIS
+\fBxpointerbarrier\fP
+\fItop\fP
+\fIleft\fP
+\fIright\fP
+\fIbottom\fP
+[\fB\-v\fP]
+.\" --------------------------------------------------------------------
+.SH DESCRIPTION
+This program creates four pointer barriers around each XRandR screen,
+thus effectively jailing your mouse pointer to one physical screen.
+.P
+These barriers cannot be passed. This means that you need a tool that
+calls \fBXWarpPointer()\fP in order to move the pointer to another
+screen. Some window managers do this for you. Another alternative is to
+use the tool \fBswarp\fP from suckless.org.
+.P
+\fBxpointerbarrier\fP will monitor changes to the screen layout and
+adapt to newly connected screens.
+.P
+\fBxpointerbarrier\fP must remaing running for the barriers to stay
+alive. As soon as the program exits, the barriers disappear.
+.\" --------------------------------------------------------------------
+.SH OPTIONS
+\fItop\fP, \fIleft\fP, \fIright\fP, and \fIbottom\fP specify the insets
+of the barriers on each screen in pixels. You will usually want to
+configure this in such a way that it matches up with your window
+decorations when using a tiling window manager.
+.P
+\fB\-v\fP enables verbose output. It must be the last argument.
+.\" --------------------------------------------------------------------
+.SH ENVIRONMENT
+.TP
+.B DISPLAY
+Target display.
+.\" --------------------------------------------------------------------
+.SH LICENSE
+\fBxpointerbarrier\fP is released as \(lqPIZZA-WARE\(rq. See the
+accompanying \fILICENSE\fP file.
+.\" --------------------------------------------------------------------
+.SH HISTORY
+\fBxpointerbarrier\fP was originally written by Peter Hofmann. The
+project was started in December 2015.
+.\" --------------------------------------------------------------------
+.SH "SEE ALSO"
+.BR swarp (1).
