@@ -4,6 +4,8 @@
  * http://who-t.blogspot.de/2012/12/whats-new-in-xi-23-pointer-barrier.html
  */
 
+#include <errno.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,10 +19,13 @@ struct Insets
     int top, left, right, bottom;
 };
 
+int do_toggle = 0;
+int verbose = 0;
+
 PointerBarrier
 create_barrier_verbose(Display *dpy, Window w, int x1, int y1,
                        int x2, int y2, int directions,
-                       int num_devices, int *devices, int verbose)
+                       int num_devices, int *devices)
 {
     PointerBarrier b;
 
@@ -35,7 +40,7 @@ create_barrier_verbose(Display *dpy, Window w, int x1, int y1,
 }
 
 PointerBarrier *
-create(Display *dpy, Window root, struct Insets *insets, int *num, int verbose)
+create(Display *dpy, Window root, struct Insets *insets, int *num)
 {
     int c, i;
     XRRCrtcInfo *ci;
@@ -84,25 +89,25 @@ create(Display *dpy, Window root, struct Insets *insets, int *num, int verbose)
                 dpy, root,
                 ci->x, ci->y + insets->top,
                 ci->x + ci->width, ci->y + insets->top,
-                BarrierPositiveY, 0, NULL, verbose
+                BarrierPositiveY, 0, NULL
         );
         barriers[i++] = create_barrier_verbose(
                 dpy, root,
                 ci->x + insets->left, ci->y,
                 ci->x + insets->left, ci->y + ci->height,
-                BarrierPositiveX, 0, NULL, verbose
+                BarrierPositiveX, 0, NULL
         );
         barriers[i++] = create_barrier_verbose(
                 dpy, root,
                 ci->x + ci->width - insets->right, ci->y,
                 ci->x + ci->width - insets->right, ci->y + ci->height,
-                BarrierNegativeX, 0, NULL, verbose
+                BarrierNegativeX, 0, NULL
         );
         barriers[i++] = create_barrier_verbose(
                 dpy, root,
                 ci->x, ci->y + ci->height - insets->bottom,
                 ci->x + ci->width, ci->y + ci->height - insets->bottom,
-                BarrierNegativeY, 0, NULL, verbose
+                BarrierNegativeY, 0, NULL
         );
     }
 
@@ -111,7 +116,7 @@ create(Display *dpy, Window root, struct Insets *insets, int *num, int verbose)
 }
 
 void
-destroy(Display *dpy, PointerBarrier *barriers, int num, int verbose)
+destroy(Display *dpy, PointerBarrier *barriers, int num)
 {
     int i;
 
@@ -123,6 +128,18 @@ destroy(Display *dpy, PointerBarrier *barriers, int num, int verbose)
     }
 
     free(barriers);
+    XSync(dpy, False);
+}
+
+void
+handle_sigusr1(int dummy)
+{
+    (void)dummy;
+
+    if (verbose)
+        fprintf(stderr, __NAME__": Received signal, toggling\n");
+
+    do_toggle = 1;
 }
 
 int
@@ -137,7 +154,10 @@ main(int argc, char **argv)
     struct Insets insets;
     PointerBarrier *barriers = NULL;
     int barriers_num;
-    int verbose = 0;
+    struct sigaction sa;
+    fd_set fds;
+    int xfd;
+    int barriers_active = 1;
 
     if (argc < 5)
     {
@@ -167,27 +187,75 @@ main(int argc, char **argv)
         exit(EXIT_FAILURE);
     }
 
+    /* Note: SA_RESTART is not set, which means that syscalls will
+     * return with errno = EINTR when a signal is sent. This is crucial. */
+    sa.sa_handler = handle_sigusr1;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+    if (sigaction(SIGUSR1, &sa, NULL) == -1)
+    {
+        perror("Cannot set up handler for SIGUSR1");
+        exit(EXIT_FAILURE);
+    }
+
     screen = DefaultScreen(dpy);
     root = RootWindow(dpy, screen);
 
-    barriers = create(dpy, root, &insets, &barriers_num, verbose);
+    /* The xlib docs say: On a POSIX system, the connection number is
+     * the file descriptor associated with the connection. */
+    xfd = ConnectionNumber(dpy);
+
+    barriers = create(dpy, root, &insets, &barriers_num);
 
     /* Selecting for StructureNotifyMask will advise the X server to
      * send us ConfigureNotify events when the size of the root window
      * changes */
     XSelectInput(dpy, root, StructureNotifyMask);
-    while (!XNextEvent(dpy, &ev))
+    XSync(dpy, False);
+    for (;;)
     {
-        if (ev.type == ConfigureNotify)
+        FD_ZERO(&fds);
+        FD_SET(xfd, &fds);
+
+        if (select(xfd + 1, &fds, NULL, NULL, NULL) == -1 && errno != EINTR)
         {
-            cev = &ev.xconfigure;
-            if (verbose)
-                fprintf(stderr, __NAME__": Got ConfigureNotify, size %dx%d\n",
-                        cev->width, cev->height);
+            perror(__NAME__": select() returned with error");
+            exit(EXIT_FAILURE);
+        }
+
+        while (XPending(dpy))
+        {
+            XNextEvent(dpy, &ev);
+
+            if (ev.type == ConfigureNotify)
+            {
+                cev = &ev.xconfigure;
+                if (verbose)
+                    fprintf(stderr, __NAME__": Got ConfigureNotify, size %dx%d\n",
+                            cev->width, cev->height);
+
+                if (barriers)
+                    destroy(dpy, barriers, barriers_num);
+
+                if (barriers_active)
+                    barriers = create(dpy, root, &insets, &barriers_num);
+                else
+                    barriers = NULL;
+            }
+        }
+
+        if (do_toggle)
+        {
+            do_toggle = 0;
+            barriers_active = !barriers_active;
 
             if (barriers)
-                destroy(dpy, barriers, barriers_num, verbose);
-            barriers = create(dpy, root, &insets, &barriers_num, verbose);
+                destroy(dpy, barriers, barriers_num);
+
+            if (barriers_active)
+                barriers = create(dpy, root, &insets, &barriers_num);
+            else
+                barriers = NULL;
         }
     }
 

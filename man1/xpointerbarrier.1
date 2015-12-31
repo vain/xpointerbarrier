@@ -34,6 +34,11 @@ decorations when using a tiling window manager.
 .P
 \fB\-v\fP enables verbose output. It must be the last argument.
 .\" --------------------------------------------------------------------
+.SH SIGNALS
+When the process receives \fBSIGUSR1\fP, it will toggle its
+\(lqactive\(rq state: If there are active barriers, then they will be
+destroyed, otherwise barriers will be created.
+.\" --------------------------------------------------------------------
 .SH ENVIRONMENT
 .TP
 .B DISPLAY
