@@ -136,9 +136,6 @@ handle_sigusr1(int dummy)
 {
     (void)dummy;
 
-    if (verbose)
-        fprintf(stderr, __NAME__": Received signal, toggling\n");
-
     do_toggle = 1;
 }
 
@@ -246,6 +243,9 @@ main(int argc, char **argv)
 
         if (do_toggle)
         {
+            if (verbose)
+                fprintf(stderr, __NAME__": Received signal, toggling\n");
+
             do_toggle = 0;
             barriers_active = !barriers_active;
 
