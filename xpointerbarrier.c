@@ -42,32 +42,22 @@ create_barrier_verbose(Display *dpy, Window w, int x1, int y1,
 PointerBarrier *
 create(Display *dpy, Window root, struct Insets *insets, int *num)
 {
-    int c, i;
-    XRRCrtcInfo *ci;
-    XRRScreenResources *sr;
+    XRRMonitorInfo *moninf;
+    int i, barr_i, nmon;
     PointerBarrier *barriers = NULL;
 
-    sr = XRRGetScreenResources(dpy, root);
-    if (sr->ncrtc <= 0)
+    moninf = XRRGetMonitors(dpy, root, True, &nmon);
+    if (nmon <= 0)
     {
         fprintf(stderr, __NAME__": No XRandR screens found\n");
         return NULL;
     }
 
-    /* First, find out how many CRTCs are actually active outputs */
-    *num = 0;
-    for (c = 0; c < sr->ncrtc; c++)
-    {
-        ci = XRRGetCrtcInfo(dpy, sr, sr->crtcs[c]);
-        if (ci == NULL || ci->noutput == 0 || ci->mode == None)
-            continue;
-        (*num)++;
-    }
     if (verbose)
-        fprintf(stderr, __NAME__": We found %d XRandR screens\n", *num);
+        fprintf(stderr, __NAME__": We found %d XRandR screens\n", nmon);
 
     /* Per CRTC, we will create 4 barriers */
-    *num *= 4;
+    *num = nmon * 4;
 
     barriers = calloc(*num, sizeof (PointerBarrier));
     if (barriers == NULL)
@@ -77,40 +67,37 @@ create(Display *dpy, Window root, struct Insets *insets, int *num)
         return NULL;
     }
 
-    i = 0;
-    for (c = 0; c < sr->ncrtc; c++)
+    barr_i = 0;
+    for (i = 0; i < nmon; i++)
     {
-        ci = XRRGetCrtcInfo(dpy, sr, sr->crtcs[c]);
-        if (ci == NULL || ci->noutput == 0 || ci->mode == None)
-            continue;
-
         /* Top, left, right, bottom */
-        barriers[i++] = create_barrier_verbose(
+        barriers[barr_i++] = create_barrier_verbose(
                 dpy, root,
-                ci->x, ci->y + insets->top,
-                ci->x + ci->width, ci->y + insets->top,
+                moninf[i].x, moninf[i].y + insets->top,
+                moninf[i].x + moninf[i].width, moninf[i].y + insets->top,
                 BarrierPositiveY, 0, NULL
         );
-        barriers[i++] = create_barrier_verbose(
+        barriers[barr_i++] = create_barrier_verbose(
                 dpy, root,
-                ci->x + insets->left, ci->y,
-                ci->x + insets->left, ci->y + ci->height,
+                moninf[i].x + insets->left, moninf[i].y,
+                moninf[i].x + insets->left, moninf[i].y + moninf[i].height,
                 BarrierPositiveX, 0, NULL
         );
-        barriers[i++] = create_barrier_verbose(
+        barriers[barr_i++] = create_barrier_verbose(
                 dpy, root,
-                ci->x + ci->width - insets->right, ci->y,
-                ci->x + ci->width - insets->right, ci->y + ci->height,
+                moninf[i].x + moninf[i].width - insets->right, moninf[i].y,
+                moninf[i].x + moninf[i].width - insets->right, moninf[i].y + moninf[i].height,
                 BarrierNegativeX, 0, NULL
         );
-        barriers[i++] = create_barrier_verbose(
+        barriers[barr_i++] = create_barrier_verbose(
                 dpy, root,
-                ci->x, ci->y + ci->height - insets->bottom,
-                ci->x + ci->width, ci->y + ci->height - insets->bottom,
+                moninf[i].x, moninf[i].y + moninf[i].height - insets->bottom,
+                moninf[i].x + moninf[i].width, moninf[i].y + moninf[i].height - insets->bottom,
                 BarrierNegativeY, 0, NULL
         );
     }
 
+    XRRFreeMonitors(moninf);
     XSync(dpy, False);
     return barriers;
 }
