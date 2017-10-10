@@ -47,7 +47,7 @@ create(Display *dpy, Window root, struct Insets *insets, int *num)
     PointerBarrier *barriers = NULL;
 
     moninf = XRRGetMonitors(dpy, root, True, &nmon);
-    if (nmon <= 0)
+    if (nmon <= 0 || moninf == NULL)
     {
         fprintf(stderr, __NAME__": No XRandR screens found\n");
         return NULL;
