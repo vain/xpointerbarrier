@@ -70,30 +70,34 @@ create(Display *dpy, Window root, struct Insets *insets, int *num)
     barr_i = 0;
     for (i = 0; i < nmon; i++)
     {
-        /* Top, left, right, bottom */
+        /* Top, left, right, bottom.
+         *
+         * If an inset of zero px has been specified, then we'll create
+         * an omnidirectional barrier. This avoids overlapping barriers
+         * which would cancel each out (partially). */
         barriers[barr_i++] = create_barrier_verbose(
                 dpy, root,
                 moninf[i].x, moninf[i].y + insets->top,
                 moninf[i].x + moninf[i].width, moninf[i].y + insets->top,
-                BarrierPositiveY, 0, NULL
+                insets->top != 0 ? BarrierPositiveY : 0, 0, NULL
         );
         barriers[barr_i++] = create_barrier_verbose(
                 dpy, root,
                 moninf[i].x + insets->left, moninf[i].y,
                 moninf[i].x + insets->left, moninf[i].y + moninf[i].height,
-                BarrierPositiveX, 0, NULL
+                insets->left != 0 ? BarrierPositiveX : 0, 0, NULL
         );
         barriers[barr_i++] = create_barrier_verbose(
                 dpy, root,
                 moninf[i].x + moninf[i].width - insets->right, moninf[i].y,
                 moninf[i].x + moninf[i].width - insets->right, moninf[i].y + moninf[i].height,
-                BarrierNegativeX, 0, NULL
+                insets->right != 0 ? BarrierNegativeX : 0, 0, NULL
         );
         barriers[barr_i++] = create_barrier_verbose(
                 dpy, root,
                 moninf[i].x, moninf[i].y + moninf[i].height - insets->bottom,
                 moninf[i].x + moninf[i].width, moninf[i].y + moninf[i].height - insets->bottom,
-                BarrierNegativeY, 0, NULL
+                insets->bottom != 0 ? BarrierNegativeY : 0, 0, NULL
         );
     }
 

@@ -1,5 +1,10 @@
 Release history for xpointerbarrier
 
+next
+  [Fixed]
+  - Setting insets of "0" no longer creates conflicting barriers, which
+    would result in one-directional barriers. (Fix for GitHub issue #1.)
+
 v17.10  2017-10-18
   [Fixed]
   - We now use XRRGetMonitors(). In contrast to XRRGetScreenResources(),
